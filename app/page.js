@@ -7,8 +7,7 @@ export default function DashboardProOutbound() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
 
-  const API_URL =
-    'https://script.google.com/macros/s/AKfycbxCPD0gsuElXVyg6YVix0cTFINOzmpsiEEzxuiZnmJVKF9GnKbPQvbOPasPGLtABX6wRg/exec';
+  const API_URL = '/api/dashboard';
 
   React.useEffect(() => {
     let cancelled = false;
@@ -36,6 +35,11 @@ export default function DashboardProOutbound() {
       cancelled = true;
     };
   }, []);
+
+  async function handleLogout() {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login';
+  }
 
   const metrics = data?.metrics || {
     totalLeads: 0,
@@ -86,14 +90,23 @@ export default function DashboardProOutbound() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <QuickBadge label="Pendientes" value={metrics.pendientes} />
-            <QuickBadge
-              label="Interesados"
-              value={metrics.interesados}
-              accent="green"
-            />
-            <QuickBadge label="Bajas" value={metrics.bajas} accent="red" />
+          <div className="flex flex-col gap-3 md:items-end">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              <QuickBadge label="Pendientes" value={metrics.pendientes} />
+              <QuickBadge
+                label="Interesados"
+                value={metrics.interesados}
+                accent="green"
+              />
+              <QuickBadge label="Bajas" value={metrics.bajas} accent="red" />
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-200 hover:bg-white/[0.08]"
+            >
+              Cerrar sesión
+            </button>
           </div>
         </header>
 
@@ -184,33 +197,7 @@ export default function DashboardProOutbound() {
           </Panel>
 
           <Panel title="Distribución rápida">
-            <div className="flex h-full flex-col justify-center gap-4">
-              {estados.map((item) => {
-                const pct = metrics.totalLeads
-                  ? ((item.value / metrics.totalLeads) * 100).toFixed(1)
-                  : '0.0';
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`h-3 w-3 rounded-full ${dotColor(item.label)}`}
-                      />
-                      <span className="text-sm text-slate-200">
-                        {item.label}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">{item.value}</div>
-                      <div className="text-xs text-slate-400">{pct}%</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <PieDistribution estados={estados} total={metrics.totalLeads} />
           </Panel>
         </section>
 
@@ -253,7 +240,7 @@ export default function DashboardProOutbound() {
                       </Td>
                       <Td>{r.respuesta}</Td>
                       <Td>{r.accion}</Td>
-                      <Td>{r.fecha}</Td>
+                      <Td>{formatDate(r.fecha)}</Td>
                     </tr>
                   ))}
                 </tbody>
@@ -285,7 +272,7 @@ export default function DashboardProOutbound() {
                         <StatusBadge status={r.estado} />
                       </Td>
                       <Td>{r.tipo || '—'}</Td>
-                      <Td>{r.fecha || '—'}</Td>
+                      <Td>{formatDate(r.fecha) || '—'}</Td>
                     </tr>
                   ))}
                 </tbody>
@@ -357,6 +344,66 @@ function KpiBlock({ label, value }) {
         {label}
       </div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
+    </div>
+  );
+}
+
+function PieDistribution({ estados, total }) {
+  const normalized = estados.map((item) => ({
+    ...item,
+    pct: total ? (item.value / total) * 100 : 0,
+  }));
+
+  const colors = {
+    Pendientes: '#1ec8ff',
+    Interesados: '#16e0b0',
+    'No interesados': '#facc15',
+    Bajas: '#fb7185',
+  };
+
+  let current = 0;
+  const segments = normalized.map((item) => {
+    const start = current;
+    const end = current + item.pct;
+    current = end;
+    return `${colors[item.label] || '#94a3b8'} ${start}% ${end}%`;
+  });
+
+  const gradient = `conic-gradient(${segments.join(', ')})`;
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[260px_1fr] items-center">
+      <div className="flex flex-col items-center justify-center">
+        <div
+          className="relative h-56 w-56 rounded-full border border-white/10"
+          style={{ background: gradient }}
+        >
+          <div className="absolute inset-[22px] rounded-full bg-slate-950 border border-white/10" />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {normalized.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: colors[item.label] || '#94a3b8' }}
+              />
+              <span className="text-sm text-slate-200">{item.label}</span>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-medium">{item.value}</div>
+              <div className="text-xs text-slate-400">
+                {item.pct.toFixed(1)}%
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -514,15 +561,9 @@ function barColor(label) {
   }
 }
 
-function dotColor(label) {
-  switch (label) {
-    case 'Interesados':
-      return 'bg-emerald-400';
-    case 'No interesados':
-      return 'bg-amber-400';
-    case 'Bajas':
-      return 'bg-rose-400';
-    default:
-      return 'bg-sky-400';
-  }
+function formatDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString('es-ES');
 }
