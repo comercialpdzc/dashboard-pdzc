@@ -22,6 +22,7 @@ export async function POST(request) {
       },
       body: JSON.stringify(body),
       cache: 'no-store',
+      redirect: 'follow',
     });
 
     const text = await res.text();
@@ -34,7 +35,9 @@ export async function POST(request) {
         {
           ok: false,
           error: 'La respuesta del Apps Script no es JSON válido',
-          raw: text,
+          status: res.status,
+          statusText: res.statusText,
+          raw: text.slice(0, 1000),
         },
         { status: 500 }
       );
