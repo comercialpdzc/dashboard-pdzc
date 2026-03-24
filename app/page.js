@@ -209,9 +209,7 @@ export default function DashboardProOutbound() {
       const payload = nombre_contacto ? [{ web, nombre_contacto }] : [{ web }];
       const result = await sendWebsToPipeline(payload);
 
-      setLeadMessage(
-        `Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`
-      );
+      setLeadMessage(`Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`);
       setSingleWeb('');
       setSingleWebName('');
       await loadDashboard();
@@ -238,9 +236,7 @@ export default function DashboardProOutbound() {
 
       const result = await sendWebsToPipeline(webs);
 
-      setLeadMessage(
-        `Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`
-      );
+      setLeadMessage(`Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`);
       setBulkWebs('');
       await loadDashboard();
     } catch (e) {
@@ -293,360 +289,370 @@ export default function DashboardProOutbound() {
   const maxAcumulado = Math.max(...acumulado.map((d) => d.value), 1);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-7xl p-6 md:p-8">
-        <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              Publicidad Digital ZC · Outbound Control Center
+    <>
+      <style jsx global>{`
+        html,
+        body {
+          background: #020617;
+          overflow-x: hidden;
+        }
+      `}</style>
+
+      <div className="min-h-screen w-full overflow-x-hidden bg-slate-950 text-slate-100">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-8">
+          <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Publicidad Digital ZC · Outbound Control Center
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                Dashboard Pro
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-slate-400 md:text-base">
+                Interfaz visual conectada a Google Sheets en tiempo real.
+              </p>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Dashboard Pro
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400 md:text-base">
-              Interfaz visual conectada a Google Sheets en tiempo real.
-            </p>
-          </div>
 
-          <div className="flex flex-col gap-3 md:items-end">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              <QuickBadge label="Pendientes" value={metrics.pendientes} />
-              <QuickBadge label="Interesados" value={metrics.interesados} accent="green" />
-              <QuickBadge label="Bajas" value={metrics.bajas} accent="red" />
-            </div>
-
-            <button
-              onClick={handleLogout}
-              className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-200 hover:bg-white/[0.08]"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </header>
-
-        {loading && (
-          <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-            Cargando datos del dashboard...
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
-            Error cargando datos: {error}
-          </div>
-        )}
-
-        <section className="mb-8">
-          <Panel title="Entrada rápida al pipeline">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-3">
-                  <div className="text-base font-medium text-white">Añadir email suelto</div>
-                  <div className="text-sm text-slate-400">
-                    Puedes añadir también un nombre si es un lead hablado.
-                  </div>
-                </div>
-
-                <input
-                  type="email"
-                  value={singleEmail}
-                  onChange={(e) => setSingleEmail(e.target.value)}
-                  placeholder="cliente@empresa.com"
-                  className="mb-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
-
-                <input
-                  type="text"
-                  value={singleEmailName}
-                  onChange={(e) => setSingleEmailName(e.target.value)}
-                  placeholder="Nombre contacto (opcional)"
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
-
-                <button
-                  onClick={handleAddSingle}
-                  disabled={addingSingle}
-                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {addingSingle ? 'Añadiendo...' : 'Añadir email al pipeline'}
-                </button>
+            <div className="flex flex-col gap-3 md:items-end">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <QuickBadge label="Pendientes" value={metrics.pendientes} />
+                <QuickBadge label="Interesados" value={metrics.interesados} accent="green" />
+                <QuickBadge label="Bajas" value={metrics.bajas} accent="red" />
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-3">
-                  <div className="text-base font-medium text-white">Añadir en bulk emails</div>
-                  <div className="text-sm text-slate-400">
-                    Pega varios emails separados por salto de línea, coma, espacio o punto y coma.
+              <button
+                onClick={handleLogout}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-200 hover:bg-white/[0.08]"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </header>
+
+          {loading && (
+            <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+              Cargando datos del dashboard...
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-6 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+              Error cargando datos: {error}
+            </div>
+          )}
+
+          <section className="mb-8">
+            <Panel title="Entrada rápida al pipeline">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-3">
+                    <div className="text-base font-medium text-white">Añadir email suelto</div>
+                    <div className="text-sm text-slate-400">
+                      Puedes añadir también un nombre si es un lead hablado.
+                    </div>
                   </div>
+
+                  <input
+                    type="email"
+                    value={singleEmail}
+                    onChange={(e) => setSingleEmail(e.target.value)}
+                    placeholder="cliente@empresa.com"
+                    className="mb-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+
+                  <input
+                    type="text"
+                    value={singleEmailName}
+                    onChange={(e) => setSingleEmailName(e.target.value)}
+                    placeholder="Nombre contacto (opcional)"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+
+                  <button
+                    onClick={handleAddSingle}
+                    disabled={addingSingle}
+                    className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {addingSingle ? 'Añadiendo...' : 'Añadir email al pipeline'}
+                  </button>
                 </div>
 
-                <textarea
-                  value={bulkEmails}
-                  onChange={(e) => setBulkEmails(e.target.value)}
-                  rows={6}
-                  placeholder={`cliente1@empresa.com
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-3">
+                    <div className="text-base font-medium text-white">Añadir en bulk emails</div>
+                    <div className="text-sm text-slate-400">
+                      Pega varios emails separados por salto de línea, coma, espacio o punto y coma.
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={bulkEmails}
+                    onChange={(e) => setBulkEmails(e.target.value)}
+                    rows={6}
+                    placeholder={`cliente1@empresa.com
 cliente2@empresa.com
 cliente3@empresa.com`}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <MiniInfo label="Detectados" value={bulkParsed.length} />
-                  <MiniInfo label="Válidos" value={bulkValidCount} tone="ok" />
-                  <MiniInfo label="Inválidos" value={bulkInvalidCount} tone="bad" />
-                </div>
-
-                <button
-                  onClick={handleAddBulk}
-                  disabled={addingBulk}
-                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-blue-500 to-sky-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {addingBulk ? 'Añadiendo...' : 'Añadir emails en bloque'}
-                </button>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-3">
-                  <div className="text-base font-medium text-white">Añadir web suelta</div>
-                  <div className="text-sm text-slate-400">
-                    Puedes añadir también un nombre si es un lead hablado.
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <MiniInfo label="Detectados" value={bulkParsed.length} />
+                    <MiniInfo label="Válidos" value={bulkValidCount} tone="ok" />
+                    <MiniInfo label="Inválidos" value={bulkInvalidCount} tone="bad" />
                   </div>
+
+                  <button
+                    onClick={handleAddBulk}
+                    disabled={addingBulk}
+                    className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-sky-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {addingBulk ? 'Añadiendo...' : 'Añadir emails en bloque'}
+                  </button>
                 </div>
 
-                <input
-                  type="text"
-                  value={singleWeb}
-                  onChange={(e) => setSingleWeb(e.target.value)}
-                  placeholder="empresa.com o https://empresa.com"
-                  className="mb-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
-
-                <input
-                  type="text"
-                  value={singleWebName}
-                  onChange={(e) => setSingleWebName(e.target.value)}
-                  placeholder="Nombre contacto (opcional)"
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
-
-                <button
-                  onClick={handleAddSingleWeb}
-                  disabled={addingSingleWeb}
-                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-fuchsia-500 to-pink-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {addingSingleWeb ? 'Añadiendo...' : 'Añadir web al pipeline'}
-                </button>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-3">
-                  <div className="text-base font-medium text-white">Añadir en bulk webs</div>
-                  <div className="text-sm text-slate-400">
-                    Pega varias webs separadas por salto de línea, coma, espacio o punto y coma.
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-3">
+                    <div className="text-base font-medium text-white">Añadir web suelta</div>
+                    <div className="text-sm text-slate-400">
+                      Puedes añadir también un nombre si es un lead hablado.
+                    </div>
                   </div>
+
+                  <input
+                    type="text"
+                    value={singleWeb}
+                    onChange={(e) => setSingleWeb(e.target.value)}
+                    placeholder="empresa.com o https://empresa.com"
+                    className="mb-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+
+                  <input
+                    type="text"
+                    value={singleWebName}
+                    onChange={(e) => setSingleWebName(e.target.value)}
+                    placeholder="Nombre contacto (opcional)"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+
+                  <button
+                    onClick={handleAddSingleWeb}
+                    disabled={addingSingleWeb}
+                    className="mt-4 w-full rounded-2xl bg-gradient-to-r from-fuchsia-500 to-pink-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {addingSingleWeb ? 'Añadiendo...' : 'Añadir web al pipeline'}
+                  </button>
                 </div>
 
-                <textarea
-                  value={bulkWebs}
-                  onChange={(e) => setBulkWebs(e.target.value)}
-                  rows={6}
-                  placeholder={`empresa1.com
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-3">
+                    <div className="text-base font-medium text-white">Añadir en bulk webs</div>
+                    <div className="text-sm text-slate-400">
+                      Pega varias webs separadas por salto de línea, coma, espacio o punto y coma.
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={bulkWebs}
+                    onChange={(e) => setBulkWebs(e.target.value)}
+                    rows={6}
+                    placeholder={`empresa1.com
 empresa2.com
 https://empresa3.com`}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <MiniInfo label="Detectadas" value={bulkWebsParsed.length} />
-                  <MiniInfo label="Válidas" value={bulkWebsValidCount} tone="ok" />
-                  <MiniInfo label="Inválidas" value={bulkWebsInvalidCount} tone="bad" />
-                </div>
-
-                <button
-                  onClick={handleAddBulkWeb}
-                  disabled={addingBulkWeb}
-                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {addingBulkWeb ? 'Añadiendo...' : 'Añadir webs en bloque'}
-                </button>
-              </div>
-            </div>
-
-            {leadError && (
-              <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
-                {leadError}
-              </div>
-            )}
-
-            {leadMessage && (
-              <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
-                {leadMessage}
-              </div>
-            )}
-          </Panel>
-        </section>
-
-        <section className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-          <MetricCard label="Total leads" value={metrics.totalLeads} />
-          <MetricCard label="Emails enviados" value={metrics.emailsEnviados} />
-          <MetricCard label="Respondidos" value={metrics.respondidos} />
-          <MetricCard label="Interesados" value={metrics.interesados} accent="green" />
-          <MetricCard label="No interesados" value={metrics.noInteresados} accent="amber" />
-          <MetricCard label="Bajas" value={metrics.bajas} accent="red" />
-        </section>
-
-        <section className="mb-8 grid gap-4 lg:grid-cols-3">
-          <Panel title="Conversión">
-            <div className="grid grid-cols-2 gap-4">
-              <KpiBlock label="% respuesta" value={`${metrics.respuestaPct}%`} />
-              <KpiBlock label="% interesados" value={`${metrics.interesadosPct}%`} />
-            </div>
-          </Panel>
-
-          <Panel title="Actividad diaria">
-            <div className="grid grid-cols-2 gap-4">
-              <KpiBlock label="Enviados hoy" value={metrics.enviadosHoy} />
-              <KpiBlock label="Respuestas hoy" value={metrics.respuestasHoy} />
-            </div>
-          </Panel>
-
-          <Panel title="Ratio real">
-            <div className="grid grid-cols-3 gap-4">
-              <KpiBlock label="Interesados" value={metrics.interesados} />
-              <KpiBlock label="Clientes" value={metrics.clientes} />
-              <KpiBlock label="Ratio cierre" value={`${metrics.ratioCierre}%`} />
-            </div>
-          </Panel>
-        </section>
-
-        <section className="mb-8 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <Panel title="Pipeline por estado">
-            <div className="space-y-5">
-              {estados.map((item) => (
-                <div key={item.label}>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="text-slate-300">{item.label}</span>
-                    <span className="font-medium text-slate-100">{item.value}</span>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <MiniInfo label="Detectadas" value={bulkWebsParsed.length} />
+                    <MiniInfo label="Válidas" value={bulkWebsValidCount} tone="ok" />
+                    <MiniInfo label="Inválidas" value={bulkWebsInvalidCount} tone="bad" />
                   </div>
-                  <div className="h-3 rounded-full bg-white/5">
-                    <div
-                      className={`h-3 rounded-full ${barColor(item.label)}`}
-                      style={{
-                        width: `${Math.max(
-                          (item.value / maxEstado) * 100,
-                          item.value > 0 ? 1.5 : 0
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Panel>
 
-          <Panel title="Distribución rápida">
-            <PieDistribution estados={estados} total={estados.reduce((a, b) => a + b.value, 0)} />
-          </Panel>
-        </section>
-
-        <section className="mb-8 grid gap-4 lg:grid-cols-2">
-          <Panel title="Gráfico de evolución · envíos por día">
-            <SimpleBars
-              data={enviosPorDia}
-              max={maxEnvios}
-              color="from-fuchsia-500 to-violet-500"
-            />
-          </Panel>
-
-          <Panel title="Curva de crecimiento real · leads acumulados">
-            <SimpleLine data={acumulado} max={maxAcumulado} />
-          </Panel>
-        </section>
-
-        <section className="mb-8 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-          <Panel title="Hot Leads · contactarUrgente">
-            {hotLeads.length ? (
-              <div className="space-y-3">
-                {hotLeads.map((lead, i) => (
-                  <div
-                    key={i}
-                    className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200"
+                  <button
+                    onClick={handleAddBulkWeb}
+                    disabled={addingBulkWeb}
+                    className="mt-4 w-full rounded-2xl bg-gradient-to-r from-fuchsia-600 to-pink-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {lead.email}
+                    {addingBulkWeb ? 'Añadiendo...' : 'Añadir webs en bloque'}
+                  </button>
+                </div>
+              </div>
+
+              {leadError && (
+                <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+                  {leadError}
+                </div>
+              )}
+
+              {leadMessage && (
+                <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                  {leadMessage}
+                </div>
+              )}
+            </Panel>
+          </section>
+
+          <section className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <MetricCard label="Total leads" value={metrics.totalLeads} />
+            <MetricCard label="Emails enviados" value={metrics.emailsEnviados} />
+            <MetricCard label="Respondidos" value={metrics.respondidos} />
+            <MetricCard label="Interesados" value={metrics.interesados} accent="green" />
+            <MetricCard label="No interesados" value={metrics.noInteresados} accent="amber" />
+            <MetricCard label="Bajas" value={metrics.bajas} accent="red" />
+          </section>
+
+          <section className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <Panel title="Conversión">
+              <div className="grid grid-cols-2 gap-4">
+                <KpiBlock label="% respuesta" value={`${metrics.respuestaPct}%`} />
+                <KpiBlock label="% interesados" value={`${metrics.interesadosPct}%`} />
+              </div>
+            </Panel>
+
+            <Panel title="Actividad diaria">
+              <div className="grid grid-cols-2 gap-4">
+                <KpiBlock label="Enviados hoy" value={metrics.enviadosHoy} />
+                <KpiBlock label="Respuestas hoy" value={metrics.respuestasHoy} />
+              </div>
+            </Panel>
+
+            <Panel title="Ratio real">
+              <div className="grid grid-cols-3 gap-4">
+                <KpiBlock label="Interesados" value={metrics.interesados} />
+                <KpiBlock label="Clientes" value={metrics.clientes} />
+                <KpiBlock label="Ratio cierre" value={`${metrics.ratioCierre}%`} />
+              </div>
+            </Panel>
+          </section>
+
+          <section className="mb-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            <Panel title="Pipeline por estado">
+              <div className="space-y-5">
+                {estados.map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="text-slate-300">{item.label}</span>
+                      <span className="font-medium text-slate-100">{item.value}</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-white/5">
+                      <div
+                        className={`h-3 rounded-full ${barColor(item.label)}`}
+                        style={{
+                          width: `${Math.max(
+                            (item.value / maxEstado) * 100,
+                            item.value > 0 ? 1.5 : 0
+                          )}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-slate-400">
-                No hay hot leads ahora mismo.
+            </Panel>
+
+            <Panel title="Distribución rápida">
+              <PieDistribution estados={estados} total={estados.reduce((a, b) => a + b.value, 0)} />
+            </Panel>
+          </section>
+
+          <section className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Panel title="Gráfico de evolución · envíos por día">
+              <SimpleBars
+                data={enviosPorDia}
+                max={maxEnvios}
+                color="from-fuchsia-500 to-violet-500"
+              />
+            </Panel>
+
+            <Panel title="Curva de crecimiento real · leads acumulados">
+              <SimpleLine data={acumulado} max={maxAcumulado} />
+            </Panel>
+          </section>
+
+          <section className="mb-8 grid grid-cols-1 gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+            <Panel title="Hot Leads · contactarUrgente">
+              {hotLeads.length ? (
+                <div className="space-y-3">
+                  {hotLeads.map((lead, i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200"
+                    >
+                      {lead.email}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-slate-400">
+                  No hay hot leads ahora mismo.
+                </div>
+              )}
+            </Panel>
+
+            <Panel title="Respuestas">
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="min-w-[720px] w-full text-left text-sm">
+                  <thead className="bg-white/[0.04] text-slate-300">
+                    <tr>
+                      <Th>Lead</Th>
+                      <Th>Estado</Th>
+                      <Th>Respuesta</Th>
+                      <Th>Acción</Th>
+                      <Th>Fecha</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {respuestas.map((r, i) => (
+                      <tr key={i} className="border-t border-white/10 bg-white/[0.02]">
+                        <Td>{r.empresa}</Td>
+                        <Td>
+                          <StatusBadge status={r.estado} />
+                        </Td>
+                        <Td>{r.respuesta}</Td>
+                        <Td>{r.accion}</Td>
+                        <Td>{formatDate(r.fecha)}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </Panel>
+            </Panel>
+          </section>
 
-          <Panel title="Respuestas">
-            <div className="overflow-hidden rounded-2xl border border-white/10">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-white/[0.04] text-slate-300">
-                  <tr>
-                    <Th>Lead</Th>
-                    <Th>Estado</Th>
-                    <Th>Respuesta</Th>
-                    <Th>Acción</Th>
-                    <Th>Fecha</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {respuestas.map((r, i) => (
-                    <tr key={i} className="border-t border-white/10 bg-white/[0.02]">
-                      <Td>{r.empresa}</Td>
-                      <Td>
-                        <StatusBadge status={r.estado} />
-                      </Td>
-                      <Td>{r.respuesta}</Td>
-                      <Td>{r.accion}</Td>
-                      <Td>{formatDate(r.fecha)}</Td>
+          <section className="mb-8">
+            <Panel title="Base de leads">
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="min-w-[760px] w-full text-left text-sm">
+                  <thead className="bg-white/[0.04] text-slate-300">
+                    <tr>
+                      <Th>Empresa</Th>
+                      <Th>Email</Th>
+                      <Th>Web</Th>
+                      <Th>Estado</Th>
+                      <Th>Tipo</Th>
+                      <Th>Fecha envío</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-        </section>
-
-        <section className="mb-8">
-          <Panel title="Base de leads">
-            <div className="overflow-hidden rounded-2xl border border-white/10">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-white/[0.04] text-slate-300">
-                  <tr>
-                    <Th>Empresa</Th>
-                    <Th>Email</Th>
-                    <Th>Web</Th>
-                    <Th>Estado</Th>
-                    <Th>Tipo</Th>
-                    <Th>Fecha envío</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leads.map((r, i) => (
-                    <tr key={i} className="border-t border-white/10 bg-white/[0.02]">
-                      <Td>{r.empresa}</Td>
-                      <Td className="max-w-[220px] truncate">{r.email || '—'}</Td>
-                      <Td className="max-w-[220px] truncate">{r.web || '—'}</Td>
-                      <Td>
-                        <StatusBadge status={r.estado} />
-                      </Td>
-                      <Td>{r.tipo || '—'}</Td>
-                      <Td>{formatDate(r.fecha) || '—'}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-        </section>
+                  </thead>
+                  <tbody>
+                    {leads.map((r, i) => (
+                      <tr key={i} className="border-t border-white/10 bg-white/[0.02]">
+                        <Td>{r.empresa}</Td>
+                        <Td className="max-w-[220px] truncate">{r.email || '—'}</Td>
+                        <Td className="max-w-[220px] truncate">{r.web || '—'}</Td>
+                        <Td>
+                          <StatusBadge status={r.estado} />
+                        </Td>
+                        <Td>{r.tipo || '—'}</Td>
+                        <Td>{formatDate(r.fecha) || '—'}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -776,9 +782,7 @@ function PieDistribution({ estados, total }) {
             </div>
             <div className="text-right">
               <div className="text-sm font-medium">{item.value}</div>
-              <div className="text-xs text-slate-400">
-                {item.pct.toFixed(1)}%
-              </div>
+              <div className="text-xs text-slate-400">{item.pct.toFixed(1)}%</div>
             </div>
           </div>
         ))}
@@ -797,27 +801,29 @@ function SimpleBars({ data, max, color }) {
   }
 
   return (
-    <div className="flex h-72 items-end gap-6 rounded-2xl border border-white/10 bg-black/20 p-5">
-      {data.map((item) => (
-        <div
-          key={item.fecha}
-          className="flex flex-1 flex-col items-center justify-end gap-3"
-        >
-          <div className="text-sm font-medium text-slate-200">{item.value}</div>
-          <div className="flex h-48 w-full items-end rounded-xl bg-white/[0.04] p-2">
-            <div
-              className={`w-full rounded-lg bg-gradient-to-t ${color}`}
-              style={{
-                height: `${Math.max(
-                  (item.value / max) * 100,
-                  item.value > 0 ? 8 : 0
-                )}%`,
-              }}
-            />
+    <div className="overflow-x-auto">
+      <div className="flex h-72 min-w-[520px] items-end gap-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+        {data.map((item) => (
+          <div
+            key={item.fecha}
+            className="flex flex-1 flex-col items-center justify-end gap-3"
+          >
+            <div className="text-sm font-medium text-slate-200">{item.value}</div>
+            <div className="flex h-48 w-full items-end rounded-xl bg-white/[0.04] p-2">
+              <div
+                className={`w-full rounded-lg bg-gradient-to-t ${color}`}
+                style={{
+                  height: `${Math.max(
+                    (item.value / max) * 100,
+                    item.value > 0 ? 8 : 0
+                  )}%`,
+                }}
+              />
+            </div>
+            <div className="text-xs text-slate-400">{item.fecha}</div>
           </div>
-          <div className="text-xs text-slate-400">{item.fecha}</div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -844,8 +850,8 @@ function SimpleLine({ data, max }) {
     .join(' ');
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-72 w-full">
+    <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/20 p-4">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-72 min-w-[520px] w-full">
         {[0, 1, 2, 3].map((n) => {
           const y = pad + (n * (height - pad * 2)) / 3;
           return (
