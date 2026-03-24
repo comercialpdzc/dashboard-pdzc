@@ -15,10 +15,7 @@ export default function DashboardProOutbound() {
   const [leadError, setLeadError] = React.useState('');
 
   const API_URL = '/api/dashboard';
-
-  // IMPORTANTE:
-  // Cambia esto por tu URL real del Web App de Apps Script
-const LEADS_API_URL = '/api/add-leads';
+  const LEADS_API_URL = '/api/add-leads';
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -35,7 +32,7 @@ const LEADS_API_URL = '/api/add-leads';
     } finally {
       setLoading(false);
     }
-  }, [API_URL]);
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -62,7 +59,7 @@ const LEADS_API_URL = '/api/add-leads';
     return () => {
       cancelled = true;
     };
-  }, [API_URL]);
+  }, []);
 
   async function handleLogout() {
     await fetch('/api/logout', { method: 'POST' });
@@ -70,12 +67,14 @@ const LEADS_API_URL = '/api/add-leads';
   }
 
   function normalizeEmailsFromText(text) {
-    return [...new Set(
-      String(text || '')
-        .split(/[\n,; ]+/)
-        .map((x) => x.trim().toLowerCase())
-        .filter(Boolean)
-    )];
+    return [
+      ...new Set(
+        String(text || '')
+          .split(/[\n,; ]+/)
+          .map((x) => x.trim().toLowerCase())
+          .filter(Boolean)
+      ),
+    ];
   }
 
   function isValidEmail(email) {
@@ -83,10 +82,10 @@ const LEADS_API_URL = '/api/add-leads';
   }
 
   async function sendEmailsToPipeline(emails) {
-    const res = await fetch(LEADS_WEBAPP_URL, {
+    const res = await fetch(LEADS_API_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         action: 'addLeadsFromDashboard',
