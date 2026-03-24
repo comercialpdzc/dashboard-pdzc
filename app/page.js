@@ -31,9 +31,29 @@ export default function DashboardProOutbound() {
   const [filterEstado, setFilterEstado] = React.useState('todos');
   const [filterTipo, setFilterTipo] = React.useState('todos');
 
+  const [contactedHotLeads, setContactedHotLeads] = React.useState({});
+
   const API_URL = '/api/dashboard';
   const LEADS_API_URL = '/api/add-leads';
   const WEB_LEADS_API_URL = '/api/add-web-leads';
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pdzc-contacted-hotleads');
+      if (saved) {
+        setContactedHotLeads(JSON.parse(saved));
+      }
+    } catch {}
+  }, []);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(
+        'pdzc-contacted-hotleads',
+        JSON.stringify(contactedHotLeads)
+      );
+    } catch {}
+  }, [contactedHotLeads]);
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -63,6 +83,13 @@ export default function DashboardProOutbound() {
   async function handleLogout() {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login';
+  }
+
+  function toggleHotLeadContacted(email) {
+    setContactedHotLeads((prev) => ({
+      ...prev,
+      [email]: !prev[email],
+    }));
   }
 
   function normalizeEmailsFromText(text) {
@@ -329,12 +356,18 @@ export default function DashboardProOutbound() {
 
   const navItems = [
     { key: 'overview', label: 'Overview' },
+    { key: 'hotleads', label: 'Hot Leads' },
     { key: 'importar', label: 'Importar leads' },
     { key: 'pipeline', label: 'Pipeline' },
-    { key: 'hotleads', label: 'Hot Leads' },
     { key: 'respuestas', label: 'Respuestas' },
     { key: 'base', label: 'Base de leads' },
   ];
+
+  const hotLeadsSorted = [...hotLeads].sort((a, b) => {
+    const aDone = !!contactedHotLeads[a.email];
+    const bDone = !!contactedHotLeads[b.email];
+    return Number(aDone) - Number(bDone);
+  });
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-slate-950 text-slate-100">
@@ -386,20 +419,6 @@ export default function DashboardProOutbound() {
               })}
             </div>
           </nav>
-
-          <div className="border-t border-white/10 p-4">
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-emerald-200/80">
-                Estado
-              </div>
-              <div className="mt-2 text-sm font-medium text-emerald-100">
-                Sistema sincronizado
-              </div>
-              <div className="mt-1 text-xs text-emerald-200/70">
-                Dashboard conectado en tiempo real
-              </div>
-            </div>
-          </div>
         </aside>
 
         <main className="min-w-0 flex-1 overflow-x-hidden bg-slate-950">
@@ -544,26 +563,49 @@ export default function DashboardProOutbound() {
                   </Panel>
 
                   <Panel title="Hot Leads">
-                    {hotLeads.length ? (
+                    {hotLeadsSorted.length ? (
                       <div className="space-y-3">
-                        {hotLeads.map((lead, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3"
-                          >
-                            <div className="min-w-0">
-                              <div className="text-xs uppercase tracking-[0.16em] text-emerald-200/80">
-                                Contactar urgente
+                        {hotLeadsSorted.map((lead, i) => {
+                          const done = !!contactedHotLeads[lead.email];
+                          return (
+                            <div
+                              key={i}
+                              className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${
+                                done
+                                  ? 'border-white/10 bg-white/[0.04]'
+                                  : 'border-emerald-400/20 bg-emerald-400/10'
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div
+                                  className={`text-xs uppercase tracking-[0.16em] ${
+                                    done ? 'text-slate-400' : 'text-emerald-200/80'
+                                  }`}
+                                >
+                                  {done ? 'Contactado' : 'Contactar urgente'}
+                                </div>
+                                <div
+                                  className={`truncate text-sm font-medium ${
+                                    done ? 'text-slate-300 line-through' : 'text-emerald-50'
+                                  }`}
+                                >
+                                  {lead.email}
+                                </div>
                               </div>
-                              <div className="truncate text-sm font-medium text-emerald-50">
-                                {lead.email}
-                              </div>
+
+                              <button
+                                onClick={() => toggleHotLeadContacted(lead.email)}
+                                className={`ml-4 rounded-full border px-3 py-1 text-xs ${
+                                  done
+                                    ? 'border-slate-500/30 bg-slate-500/10 text-slate-200'
+                                    : 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100'
+                                }`}
+                              >
+                                {done ? '✓ Contactado' : 'Marcar contacto'}
+                              </button>
                             </div>
-                            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[11px] text-emerald-100">
-                              Hot
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <EmptyState text="No hay hot leads ahora mismo" />
@@ -811,21 +853,48 @@ https://empresa3.com`}
             {activeView === 'hotleads' && (
               <div className="space-y-6">
                 <Panel title="Hot Leads · contactar urgente">
-                  {hotLeads.length ? (
+                  {hotLeadsSorted.length ? (
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {hotLeads.map((lead, i) => (
-                        <div
-                          key={i}
-                          className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4"
-                        >
-                          <div className="text-xs uppercase tracking-[0.18em] text-emerald-200/80">
-                            Hot lead
+                      {hotLeadsSorted.map((lead, i) => {
+                        const done = !!contactedHotLeads[lead.email];
+                        return (
+                          <div
+                            key={i}
+                            className={`rounded-2xl border p-4 ${
+                              done
+                                ? 'border-white/10 bg-white/[0.04]'
+                                : 'border-emerald-400/20 bg-emerald-400/10'
+                            }`}
+                          >
+                            <div
+                              className={`text-xs uppercase tracking-[0.18em] ${
+                                done ? 'text-slate-400' : 'text-emerald-200/80'
+                              }`}
+                            >
+                              {done ? 'Ya contactado' : 'Hot lead'}
+                            </div>
+
+                            <div
+                              className={`mt-2 break-all text-sm font-medium ${
+                                done ? 'text-slate-300 line-through' : 'text-emerald-50'
+                              }`}
+                            >
+                              {lead.email}
+                            </div>
+
+                            <button
+                              onClick={() => toggleHotLeadContacted(lead.email)}
+                              className={`mt-4 rounded-xl border px-3 py-2 text-xs ${
+                                done
+                                  ? 'border-slate-500/30 bg-slate-500/10 text-slate-200'
+                                  : 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100'
+                              }`}
+                            >
+                              {done ? '✓ Marcar como pendiente' : '✓ Marcar como contactado'}
+                            </button>
                           </div>
-                          <div className="mt-2 break-all text-sm font-medium text-emerald-50">
-                            {lead.email}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <EmptyState text="No hay leads urgentes ahora mismo" />
@@ -1015,17 +1084,34 @@ function EmptyState({ text }) {
 }
 
 function PieDistribution({ estados, total }) {
-  const items = estados.map((item) => ({
-    ...item,
-    pct: total > 0 ? item.value / total : 0,
-  }));
-
   const colors = {
     Pendientes: '#1ec8ff',
     Interesados: '#16e0b0',
     'No interesados': '#facc15',
     Bajas: '#fb7185',
   };
+
+  const positive = estados.filter((item) => item.value > 0);
+  const sum = positive.reduce((acc, item) => acc + item.value, 0);
+
+  const minPct = 0.03;
+  let provisional = positive.map((item) => ({
+    ...item,
+    realPct: sum > 0 ? item.value / sum : 0,
+    drawPct: sum > 0 ? item.value / sum : 0,
+  }));
+
+  provisional = provisional.map((item) => ({
+    ...item,
+    drawPct: item.realPct > 0 && item.realPct < minPct ? minPct : item.realPct,
+  }));
+
+  const drawSum = provisional.reduce((acc, item) => acc + item.drawPct, 0);
+
+  provisional = provisional.map((item) => ({
+    ...item,
+    drawPct: drawSum > 0 ? item.drawPct / drawSum : 0,
+  }));
 
   const size = 240;
   const stroke = 28;
@@ -1052,14 +1138,12 @@ function PieDistribution({ estados, total }) {
             strokeWidth={stroke}
           />
 
-          {items.map((item, index) => {
-            const segment = circumference * item.pct;
+          {provisional.map((item, index) => {
+            const segment = circumference * item.drawPct;
             const dasharray = `${segment} ${circumference - segment}`;
             const dashoffset = -offsetAccum;
 
             offsetAccum += segment;
-
-            if (item.value <= 0) return null;
 
             return (
               <circle
@@ -1080,26 +1164,27 @@ function PieDistribution({ estados, total }) {
       </div>
 
       <div className="space-y-4">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: colors[item.label] || '#94a3b8' }}
-              />
-              <span className="text-sm text-slate-200">{item.label}</span>
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-medium">{item.value}</div>
-              <div className="text-xs text-slate-400">
-                {(item.pct * 100).toFixed(1)}%
+        {estados.map((item) => {
+          const pct = total ? (item.value / total) * 100 : 0;
+          return (
+            <div
+              key={item.label}
+              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: colors[item.label] || '#94a3b8' }}
+                />
+                <span className="text-sm text-slate-200">{item.label}</span>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-medium">{item.value}</div>
+                <div className="text-xs text-slate-400">{pct.toFixed(1)}%</div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
