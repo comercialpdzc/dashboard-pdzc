@@ -346,6 +346,9 @@ export default function DashboardProOutbound() {
                 src={LOGO_URL}
                 alt="Publicidad Digital ZC"
                 className="h-11 w-11 rounded-xl bg-white object-contain p-1 ring-1 ring-white/10"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
               />
               <div>
                 <div className="text-sm font-semibold text-white">PDZC Outbound</div>
@@ -408,6 +411,9 @@ export default function DashboardProOutbound() {
                     src={LOGO_URL}
                     alt="PDZC"
                     className="h-8 w-8 rounded-lg bg-white object-contain p-1"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 </div>
 
@@ -492,6 +498,36 @@ export default function DashboardProOutbound() {
                   <MetricCard label="Bajas" value={metrics.bajas} accent="red" />
                 </section>
 
+                <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                  <Panel title="Pipeline por estado">
+                    <div className="space-y-5">
+                      {estados.map((item) => (
+                        <div key={item.label}>
+                          <div className="mb-2 flex items-center justify-between text-sm">
+                            <span className="text-slate-300">{item.label}</span>
+                            <span className="font-medium text-slate-100">{item.value}</span>
+                          </div>
+                          <div className="h-3 rounded-full bg-white/5">
+                            <div
+                              className={`h-3 rounded-full ${barColor(item.label)}`}
+                              style={{
+                                width: `${Math.max(
+                                  (item.value / maxEstado) * 100,
+                                  item.value > 0 ? 1.5 : 0
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Panel>
+
+                  <Panel title="Distribución rápida">
+                    <PieDistribution estados={estados} total={metrics.totalLeads} />
+                  </Panel>
+                </section>
+
                 <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
                   <Panel title="Centro de mando">
                     <div className="grid gap-4 md:grid-cols-3">
@@ -532,36 +568,6 @@ export default function DashboardProOutbound() {
                     ) : (
                       <EmptyState text="No hay hot leads ahora mismo" />
                     )}
-                  </Panel>
-                </section>
-
-                <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-                  <Panel title="Pipeline por estado">
-                    <div className="space-y-5">
-                      {estados.map((item) => (
-                        <div key={item.label}>
-                          <div className="mb-2 flex items-center justify-between text-sm">
-                            <span className="text-slate-300">{item.label}</span>
-                            <span className="font-medium text-slate-100">{item.value}</span>
-                          </div>
-                          <div className="h-3 rounded-full bg-white/5">
-                            <div
-                              className={`h-3 rounded-full ${barColor(item.label)}`}
-                              style={{
-                                width: `${Math.max(
-                                  (item.value / maxEstado) * 100,
-                                  item.value > 0 ? 1.5 : 0
-                                )}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Panel>
-
-                  <Panel title="Distribución rápida">
-                    <PieDistribution estados={estados} total={metrics.totalLeads} />
                   </Panel>
                 </section>
 
@@ -1009,9 +1015,9 @@ function EmptyState({ text }) {
 }
 
 function PieDistribution({ estados, total }) {
-  const normalized = estados.map((item) => ({
+  const items = estados.map((item) => ({
     ...item,
-    pct: total ? (item.value / total) * 100 : 0,
+    pct: total > 0 ? item.value / total : 0,
   }));
 
   const colors = {
@@ -1021,29 +1027,60 @@ function PieDistribution({ estados, total }) {
     Bajas: '#fb7185',
   };
 
-  let current = 0;
-  const segments = normalized.map((item) => {
-    const start = current;
-    const end = current + item.pct;
-    current = end;
-    return `${colors[item.label] || '#94a3b8'} ${start}% ${end}%`;
-  });
+  const size = 240;
+  const stroke = 28;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
 
-  const gradient = `conic-gradient(${segments.join(', ')})`;
+  let offsetAccum = 0;
 
   return (
     <div className="grid items-center gap-6 lg:grid-cols-[260px_1fr]">
       <div className="flex flex-col items-center justify-center">
-        <div
-          className="relative h-56 w-56 rounded-full border border-white/10"
-          style={{ background: gradient }}
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="-rotate-90"
         >
-          <div className="absolute inset-[22px] rounded-full border border-white/10 bg-slate-950" />
-        </div>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth={stroke}
+          />
+
+          {items.map((item, index) => {
+            const segment = circumference * item.pct;
+            const dasharray = `${segment} ${circumference - segment}`;
+            const dashoffset = -offsetAccum;
+
+            offsetAccum += segment;
+
+            if (item.value <= 0) return null;
+
+            return (
+              <circle
+                key={index}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke={colors[item.label] || '#94a3b8'}
+                strokeWidth={stroke}
+                strokeDasharray={dasharray}
+                strokeDashoffset={dashoffset}
+                strokeLinecap="butt"
+              />
+            );
+          })}
+        </svg>
       </div>
 
       <div className="space-y-4">
-        {normalized.map((item) => (
+        {items.map((item) => (
           <div
             key={item.label}
             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
@@ -1057,7 +1094,9 @@ function PieDistribution({ estados, total }) {
             </div>
             <div className="text-right">
               <div className="text-sm font-medium">{item.value}</div>
-              <div className="text-xs text-slate-400">{item.pct.toFixed(1)}%</div>
+              <div className="text-xs text-slate-400">
+                {(item.pct * 100).toFixed(1)}%
+              </div>
             </div>
           </div>
         ))}
