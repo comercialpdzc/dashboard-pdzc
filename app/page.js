@@ -8,8 +8,11 @@ export default function DashboardProOutbound() {
   const [error, setError] = React.useState('');
 
   const [singleEmail, setSingleEmail] = React.useState('');
+  const [singleEmailName, setSingleEmailName] = React.useState('');
   const [bulkEmails, setBulkEmails] = React.useState('');
+
   const [singleWeb, setSingleWeb] = React.useState('');
+  const [singleWebName, setSingleWebName] = React.useState('');
   const [bulkWebs, setBulkWebs] = React.useState('');
 
   const [addingSingle, setAddingSingle] = React.useState(false);
@@ -108,15 +111,13 @@ export default function DashboardProOutbound() {
     );
   }
 
-  async function sendEmailsToPipeline(emails) {
+  async function sendEmailsToPipeline(items) {
     const res = await fetch(LEADS_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'addLeadsFromDashboard',
-        emails,
+        emails: items,
       }),
     });
 
@@ -129,15 +130,13 @@ export default function DashboardProOutbound() {
     return data;
   }
 
-  async function sendWebsToPipeline(webs) {
+  async function sendWebsToPipeline(items) {
     const res = await fetch(WEB_LEADS_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'addWebLeadsFromDashboard',
-        webs,
+        webs: items,
       }),
     });
 
@@ -155,6 +154,7 @@ export default function DashboardProOutbound() {
     setLeadMessage('');
 
     const email = String(singleEmail || '').trim().toLowerCase();
+    const nombre_contacto = String(singleEmailName || '').trim();
 
     if (!email) {
       setLeadError('Introduce un email.');
@@ -169,12 +169,13 @@ export default function DashboardProOutbound() {
     try {
       setAddingSingle(true);
 
-      const result = await sendEmailsToPipeline([email]);
+      const result = await sendEmailsToPipeline([{ email, nombre_contacto }]);
 
       setLeadMessage(
         `Emails → Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
       );
       setSingleEmail('');
+      setSingleEmailName('');
       await loadDashboard();
     } catch (e) {
       setLeadError(String(e?.message || e));
@@ -216,6 +217,7 @@ export default function DashboardProOutbound() {
     setLeadMessage('');
 
     const web = String(singleWeb || '').trim();
+    const nombre_contacto = String(singleWebName || '').trim();
 
     if (!web) {
       setLeadError('Introduce una web.');
@@ -230,12 +232,13 @@ export default function DashboardProOutbound() {
     try {
       setAddingSingleWeb(true);
 
-      const result = await sendWebsToPipeline([web]);
+      const result = await sendWebsToPipeline([{ web, nombre_contacto }]);
 
       setLeadMessage(
         `Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`
       );
       setSingleWeb('');
+      setSingleWebName('');
       await loadDashboard();
     } catch (e) {
       setLeadError(String(e?.message || e));
@@ -304,6 +307,7 @@ export default function DashboardProOutbound() {
     { label: 'Bajas', value: 0 },
   ];
 
+  const hotLeads = data?.hotLeads || [];
   const respuestas = data?.respuestas || [];
   const leads = data?.leads || [];
   const enviosPorDia = data?.enviosPorDia || [];
@@ -362,6 +366,32 @@ export default function DashboardProOutbound() {
         )}
 
         <section className="mb-8">
+          <Panel title="Hot Leads · Contactar urgente" accent="green">
+            {hotLeads.length === 0 ? (
+              <div className="rounded-2xl border border-emerald-400/15 bg-black/20 px-4 py-4 text-sm text-slate-300">
+                No hay hot leads ahora mismo.
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {hotLeads.map((lead, i) => (
+                  <div
+                    key={`${lead.email || 'hot'}-${i}`}
+                    className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3"
+                  >
+                    <div className="text-xs uppercase tracking-[0.16em] text-emerald-300/80">
+                      Contactar urgente
+                    </div>
+                    <div className="mt-2 truncate text-sm font-medium text-emerald-100">
+                      {lead.email || '—'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+        </section>
+
+        <section className="mb-8">
           <Panel title="Entrada rápida al pipeline">
             <div className="grid gap-4 xl:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -370,22 +400,32 @@ export default function DashboardProOutbound() {
                     Añadir email suelto
                   </div>
                   <div className="text-sm text-slate-400">
-                    Se insertará justo después del último enviado_1 y antes del primer pendiente.
+                    Puedes añadir también un nombre si es un lead hablado.
                   </div>
                 </div>
 
-                <input
-                  type="email"
-                  value={singleEmail}
-                  onChange={(e) => setSingleEmail(e.target.value)}
-                  placeholder="cliente@empresa.com"
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
+                <div className="space-y-3">
+                  <input
+                    type="email"
+                    value={singleEmail}
+                    onChange={(e) => setSingleEmail(e.target.value)}
+                    placeholder="cliente@empresa.com"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+
+                  <input
+                    type="text"
+                    value={singleEmailName}
+                    onChange={(e) => setSingleEmailName(e.target.value)}
+                    placeholder="Nombre contacto (opcional)"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+                </div>
 
                 <button
                   onClick={handleAddSingle}
                   disabled={addingSingle}
-                  className="mt-4 w-full rounded-2xl bg-sky-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-sky-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingSingle ? 'Añadiendo...' : 'Añadir email al pipeline'}
                 </button>
@@ -420,7 +460,7 @@ cliente3@empresa.com`}
                 <button
                   onClick={handleAddBulk}
                   disabled={addingBulk}
-                  className="mt-4 w-full rounded-2xl bg-fuchsia-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingBulk ? 'Añadiendo...' : 'Añadir emails en bloque'}
                 </button>
@@ -432,22 +472,32 @@ cliente3@empresa.com`}
                     Añadir web suelta
                   </div>
                   <div className="text-sm text-slate-400">
-                    Se añadirá al pipeline como pendiente_web y el sistema intentará sacar el email automáticamente.
+                    Puedes añadir también un nombre si es un lead hablado.
                   </div>
                 </div>
 
-                <input
-                  type="text"
-                  value={singleWeb}
-                  onChange={(e) => setSingleWeb(e.target.value)}
-                  placeholder="empresa.com o https://empresa.com"
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                />
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={singleWeb}
+                    onChange={(e) => setSingleWeb(e.target.value)}
+                    placeholder="empresa.com o https://empresa.com"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+
+                  <input
+                    type="text"
+                    value={singleWebName}
+                    onChange={(e) => setSingleWebName(e.target.value)}
+                    placeholder="Nombre contacto (opcional)"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+                </div>
 
                 <button
                   onClick={handleAddSingleWeb}
                   disabled={addingSingleWeb}
-                  className="mt-4 w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-fuchsia-500 px-4 py-3 text-sm font-medium text-white hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingSingleWeb ? 'Añadiendo...' : 'Añadir web al pipeline'}
                 </button>
@@ -482,7 +532,7 @@ https://empresa3.com`}
                 <button
                   onClick={handleAddBulkWeb}
                   disabled={addingBulkWeb}
-                  className="mt-4 w-full rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-pink-500 px-4 py-3 text-sm font-medium text-white hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingBulkWeb ? 'Añadiendo...' : 'Añadir webs en bloque'}
                 </button>
@@ -524,10 +574,7 @@ https://empresa3.com`}
           <Panel title="Conversión">
             <div className="grid grid-cols-2 gap-4">
               <KpiBlock label="% respuesta" value={`${metrics.respuestaPct}%`} />
-              <KpiBlock
-                label="% interesados"
-                value={`${metrics.interesadosPct}%`}
-              />
+              <KpiBlock label="% interesados" value={`${metrics.interesadosPct}%`} />
             </div>
           </Panel>
 
@@ -542,10 +589,7 @@ https://empresa3.com`}
             <div className="grid grid-cols-3 gap-4">
               <KpiBlock label="Interesados" value={metrics.interesados} />
               <KpiBlock label="Clientes" value={metrics.clientes} />
-              <KpiBlock
-                label="Ratio cierre"
-                value={`${metrics.ratioCierre}%`}
-              />
+              <KpiBlock label="Ratio cierre" value={`${metrics.ratioCierre}%`} />
             </div>
           </Panel>
         </section>
@@ -668,9 +712,14 @@ https://empresa3.com`}
   );
 }
 
-function Panel({ title, children }) {
+function Panel({ title, children, accent = 'default' }) {
+  const accentClasses =
+    accent === 'green'
+      ? 'border-emerald-400/20 bg-emerald-500/[0.08]'
+      : 'border-white/10 bg-white/[0.04]';
+
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 backdrop-blur-sm">
+    <div className={`rounded-[28px] border p-5 shadow-2xl shadow-black/20 backdrop-blur-sm ${accentClasses}`}>
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-lg font-medium tracking-tight text-slate-100">
           {title}
