@@ -460,7 +460,7 @@ cliente3@empresa.com`}
                 <button
                   onClick={handleAddBulk}
                   disabled={addingBulk}
-                  className="mt-4 w-full rounded-2xl bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-sky-500 px-4 py-3 text-sm font-medium text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingBulk ? 'Añadiendo...' : 'Añadir emails en bloque'}
                 </button>
@@ -532,7 +532,7 @@ https://empresa3.com`}
                 <button
                   onClick={handleAddBulkWeb}
                   disabled={addingBulkWeb}
-                  className="mt-4 w-full rounded-2xl bg-pink-500 px-4 py-3 text-sm font-medium text-white hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-medium text-white hover:bg-fuchsia-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingBulkWeb ? 'Añadiendo...' : 'Añadir webs en bloque'}
                 </button>
@@ -557,16 +557,8 @@ https://empresa3.com`}
           <MetricCard label="Total leads" value={metrics.totalLeads} />
           <MetricCard label="Emails enviados" value={metrics.emailsEnviados} />
           <MetricCard label="Respondidos" value={metrics.respondidos} />
-          <MetricCard
-            label="Interesados"
-            value={metrics.interesados}
-            accent="green"
-          />
-          <MetricCard
-            label="No interesados"
-            value={metrics.noInteresados}
-            accent="amber"
-          />
+          <MetricCard label="Interesados" value={metrics.interesados} accent="green" />
+          <MetricCard label="No interesados" value={metrics.noInteresados} accent="amber" />
           <MetricCard label="Bajas" value={metrics.bajas} accent="red" />
         </section>
 
