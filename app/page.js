@@ -18,8 +18,7 @@ export default function DashboardProOutbound() {
 
   // IMPORTANTE:
   // Cambia esto por tu URL real del Web App de Apps Script
-  const LEADS_WEBAPP_URL =
-    'https://script.google.com/macros/s/AKfycbzqMVdV8NYpu4HxT9ijpboPstnx1jx6GgyxL7-GPjL_eDpMu5D6UmvHrXHEu--6OjE/exec';
+const LEADS_API_URL = '/api/add-leads';
 
   const loadDashboard = React.useCallback(async () => {
     try {
