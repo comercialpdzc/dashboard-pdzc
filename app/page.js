@@ -33,9 +33,12 @@ export default function DashboardProOutbound() {
       setError('');
 
       const res = await fetch(API_URL, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const json = await res.json();
+
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || `HTTP ${res.status}`);
+      }
+
       setData(json);
     } catch (e) {
       setError(String(e?.message || e));
@@ -45,34 +48,13 @@ export default function DashboardProOutbound() {
   }, []);
 
   React.useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError('');
-
-        const res = await fetch(API_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const json = await res.json();
-        if (!cancelled) setData(json);
-      } catch (e) {
-        if (!cancelled) setError(String(e?.message || e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    loadDashboard();
+  }, [loadDashboard]);
 
   async function handleLogout() {
-    await fetch('/api/logout', { method: 'POST' });
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } catch (_) {}
     window.location.href = '/login';
   }
 
@@ -102,51 +84,42 @@ export default function DashboardProOutbound() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
   }
 
-  function isLikelyWeb(value) {
-    const v = String(value || '').trim();
-    if (!v) return false;
-    return (
-      /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(v) ||
-      /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(v)
-    );
+  function isValidWeb(web) {
+    const w = String(web || '').trim();
+    if (!w) return false;
+    return /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/.test(w);
   }
 
   async function sendEmailsToPipeline(items) {
     const res = await fetch(LEADS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'addLeadsFromDashboard',
-        emails: items,
-      }),
+      body: JSON.stringify({ action: 'addLeadsFromDashboard', emails: items }),
     });
 
-    const data = await res.json();
+    const json = await res.json();
 
-    if (!data?.ok) {
-      throw new Error(data?.error || 'Error añadiendo leads');
+    if (!res.ok || !json?.ok) {
+      throw new Error(json?.error || 'Error añadiendo leads por email');
     }
 
-    return data;
+    return json;
   }
 
   async function sendWebsToPipeline(items) {
     const res = await fetch(WEB_LEADS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'addWebLeadsFromDashboard',
-        webs: items,
-      }),
+      body: JSON.stringify({ action: 'addWebLeadsFromDashboard', webs: items }),
     });
 
-    const data = await res.json();
+    const json = await res.json();
 
-    if (!data?.ok) {
-      throw new Error(data?.error || 'Error añadiendo webs');
+    if (!res.ok || !json?.ok) {
+      throw new Error(json?.error || 'Error añadiendo leads por web');
     }
 
-    return data;
+    return json;
   }
 
   async function handleAddSingle() {
@@ -169,7 +142,8 @@ export default function DashboardProOutbound() {
     try {
       setAddingSingle(true);
 
-      const result = await sendEmailsToPipeline([{ email, nombre_contacto }]);
+      const payload = nombre_contacto ? [{ email, nombre_contacto }] : [{ email }];
+      const result = await sendEmailsToPipeline(payload);
 
       setLeadMessage(
         `Emails → Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
@@ -224,15 +198,16 @@ export default function DashboardProOutbound() {
       return;
     }
 
-    if (!isLikelyWeb(web)) {
-      setLeadError('La web no parece válida.');
+    if (!isValidWeb(web)) {
+      setLeadError('La web no es válida.');
       return;
     }
 
     try {
       setAddingSingleWeb(true);
 
-      const result = await sendWebsToPipeline([{ web, nombre_contacto }]);
+      const payload = nombre_contacto ? [{ web, nombre_contacto }] : [{ web }];
+      const result = await sendWebsToPipeline(payload);
 
       setLeadMessage(
         `Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`
@@ -279,9 +254,9 @@ export default function DashboardProOutbound() {
   const bulkValidCount = bulkParsed.filter(isValidEmail).length;
   const bulkInvalidCount = bulkParsed.filter((e) => !isValidEmail(e)).length;
 
-  const bulkParsedWebs = normalizeWebsFromText(bulkWebs);
-  const bulkValidWebCount = bulkParsedWebs.filter(isLikelyWeb).length;
-  const bulkInvalidWebCount = bulkParsedWebs.filter((w) => !isLikelyWeb(w)).length;
+  const bulkWebsParsed = normalizeWebsFromText(bulkWebs);
+  const bulkWebsValidCount = bulkWebsParsed.filter(isValidWeb).length;
+  const bulkWebsInvalidCount = bulkWebsParsed.filter((w) => !isValidWeb(w)).length;
 
   const metrics = data?.metrics || {
     totalLeads: 0,
@@ -307,11 +282,11 @@ export default function DashboardProOutbound() {
     { label: 'Bajas', value: 0 },
   ];
 
-  const hotLeads = data?.hotLeads || [];
   const respuestas = data?.respuestas || [];
   const leads = data?.leads || [];
   const enviosPorDia = data?.enviosPorDia || [];
   const acumulado = data?.acumulado || [];
+  const hotLeads = data?.hotLeads || [];
 
   const maxEstado = Math.max(...estados.map((e) => e.value), 1);
   const maxEnvios = Math.max(...enviosPorDia.map((d) => d.value), 1);
@@ -336,11 +311,7 @@ export default function DashboardProOutbound() {
           <div className="flex flex-col gap-3 md:items-end">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               <QuickBadge label="Pendientes" value={metrics.pendientes} />
-              <QuickBadge
-                label="Interesados"
-                value={metrics.interesados}
-                accent="green"
-              />
+              <QuickBadge label="Interesados" value={metrics.interesados} accent="green" />
               <QuickBadge label="Bajas" value={metrics.bajas} accent="red" />
             </div>
 
@@ -366,66 +337,36 @@ export default function DashboardProOutbound() {
         )}
 
         <section className="mb-8">
-          <Panel title="Hot Leads · Contactar urgente" accent="green">
-            {hotLeads.length === 0 ? (
-              <div className="rounded-2xl border border-emerald-400/15 bg-black/20 px-4 py-4 text-sm text-slate-300">
-                No hay hot leads ahora mismo.
-              </div>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {hotLeads.map((lead, i) => (
-                  <div
-                    key={`${lead.email || 'hot'}-${i}`}
-                    className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3"
-                  >
-                    <div className="text-xs uppercase tracking-[0.16em] text-emerald-300/80">
-                      Contactar urgente
-                    </div>
-                    <div className="mt-2 truncate text-sm font-medium text-emerald-100">
-                      {lead.email || '—'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Panel>
-        </section>
-
-        <section className="mb-8">
           <Panel title="Entrada rápida al pipeline">
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-3">
-                  <div className="text-base font-medium text-white">
-                    Añadir email suelto
-                  </div>
+                  <div className="text-base font-medium text-white">Añadir email suelto</div>
                   <div className="text-sm text-slate-400">
                     Puedes añadir también un nombre si es un lead hablado.
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <input
-                    type="email"
-                    value={singleEmail}
-                    onChange={(e) => setSingleEmail(e.target.value)}
-                    placeholder="cliente@empresa.com"
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                  />
+                <input
+                  type="email"
+                  value={singleEmail}
+                  onChange={(e) => setSingleEmail(e.target.value)}
+                  placeholder="cliente@empresa.com"
+                  className="mb-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
 
-                  <input
-                    type="text"
-                    value={singleEmailName}
-                    onChange={(e) => setSingleEmailName(e.target.value)}
-                    placeholder="Nombre contacto (opcional)"
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={singleEmailName}
+                  onChange={(e) => setSingleEmailName(e.target.value)}
+                  placeholder="Nombre contacto (opcional)"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
 
                 <button
                   onClick={handleAddSingle}
                   disabled={addingSingle}
-                  className="mt-4 w-full rounded-2xl bg-sky-400 px-4 py-3 text-sm font-medium text-slate-950 hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingSingle ? 'Añadiendo...' : 'Añadir email al pipeline'}
                 </button>
@@ -433,9 +374,7 @@ export default function DashboardProOutbound() {
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-3">
-                  <div className="text-base font-medium text-white">
-                    Añadir en bulk emails
-                  </div>
+                  <div className="text-base font-medium text-white">Añadir en bulk emails</div>
                   <div className="text-sm text-slate-400">
                     Pega varios emails separados por salto de línea, coma, espacio o punto y coma.
                   </div>
@@ -444,7 +383,7 @@ export default function DashboardProOutbound() {
                 <textarea
                   value={bulkEmails}
                   onChange={(e) => setBulkEmails(e.target.value)}
-                  rows={8}
+                  rows={6}
                   placeholder={`cliente1@empresa.com
 cliente2@empresa.com
 cliente3@empresa.com`}
@@ -460,7 +399,7 @@ cliente3@empresa.com`}
                 <button
                   onClick={handleAddBulk}
                   disabled={addingBulk}
-                  className="mt-4 w-full rounded-2xl bg-sky-500 px-4 py-3 text-sm font-medium text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-blue-500 to-sky-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingBulk ? 'Añadiendo...' : 'Añadir emails en bloque'}
                 </button>
@@ -468,36 +407,32 @@ cliente3@empresa.com`}
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-3">
-                  <div className="text-base font-medium text-white">
-                    Añadir web suelta
-                  </div>
+                  <div className="text-base font-medium text-white">Añadir web suelta</div>
                   <div className="text-sm text-slate-400">
                     Puedes añadir también un nombre si es un lead hablado.
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={singleWeb}
-                    onChange={(e) => setSingleWeb(e.target.value)}
-                    placeholder="empresa.com o https://empresa.com"
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                  />
+                <input
+                  type="text"
+                  value={singleWeb}
+                  onChange={(e) => setSingleWeb(e.target.value)}
+                  placeholder="empresa.com o https://empresa.com"
+                  className="mb-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
 
-                  <input
-                    type="text"
-                    value={singleWebName}
-                    onChange={(e) => setSingleWebName(e.target.value)}
-                    placeholder="Nombre contacto (opcional)"
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={singleWebName}
+                  onChange={(e) => setSingleWebName(e.target.value)}
+                  placeholder="Nombre contacto (opcional)"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
 
                 <button
                   onClick={handleAddSingleWeb}
                   disabled={addingSingleWeb}
-                  className="mt-4 w-full rounded-2xl bg-fuchsia-500 px-4 py-3 text-sm font-medium text-white hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-fuchsia-500 to-pink-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingSingleWeb ? 'Añadiendo...' : 'Añadir web al pipeline'}
                 </button>
@@ -505,9 +440,7 @@ cliente3@empresa.com`}
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-3">
-                  <div className="text-base font-medium text-white">
-                    Añadir en bulk webs
-                  </div>
+                  <div className="text-base font-medium text-white">Añadir en bulk webs</div>
                   <div className="text-sm text-slate-400">
                     Pega varias webs separadas por salto de línea, coma, espacio o punto y coma.
                   </div>
@@ -516,7 +449,7 @@ cliente3@empresa.com`}
                 <textarea
                   value={bulkWebs}
                   onChange={(e) => setBulkWebs(e.target.value)}
-                  rows={8}
+                  rows={6}
                   placeholder={`empresa1.com
 empresa2.com
 https://empresa3.com`}
@@ -524,15 +457,15 @@ https://empresa3.com`}
                 />
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <MiniInfo label="Detectadas" value={bulkParsedWebs.length} />
-                  <MiniInfo label="Válidas" value={bulkValidWebCount} tone="ok" />
-                  <MiniInfo label="Inválidas" value={bulkInvalidWebCount} tone="bad" />
+                  <MiniInfo label="Detectadas" value={bulkWebsParsed.length} />
+                  <MiniInfo label="Válidas" value={bulkWebsValidCount} tone="ok" />
+                  <MiniInfo label="Inválidas" value={bulkWebsInvalidCount} tone="bad" />
                 </div>
 
                 <button
                   onClick={handleAddBulkWeb}
                   disabled={addingBulkWeb}
-                  className="mt-4 w-full rounded-2xl bg-fuchsia-600 px-4 py-3 text-sm font-medium text-white hover:bg-fuchsia-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {addingBulkWeb ? 'Añadiendo...' : 'Añadir webs en bloque'}
                 </button>
@@ -593,9 +526,7 @@ https://empresa3.com`}
                 <div key={item.label}>
                   <div className="mb-2 flex items-center justify-between text-sm">
                     <span className="text-slate-300">{item.label}</span>
-                    <span className="font-medium text-slate-100">
-                      {item.value}
-                    </span>
+                    <span className="font-medium text-slate-100">{item.value}</span>
                   </div>
                   <div className="h-3 rounded-full bg-white/5">
                     <div
@@ -614,7 +545,7 @@ https://empresa3.com`}
           </Panel>
 
           <Panel title="Distribución rápida">
-            <PieDistribution estados={estados} total={metrics.totalLeads} />
+            <PieDistribution estados={estados} total={estados.reduce((a, b) => a + b.value, 0)} />
           </Panel>
         </section>
 
@@ -632,7 +563,26 @@ https://empresa3.com`}
           </Panel>
         </section>
 
-        <section className="mb-8 grid gap-4 2xl:grid-cols-[1fr_1fr]">
+        <section className="mb-8 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+          <Panel title="Hot Leads · contactarUrgente">
+            {hotLeads.length ? (
+              <div className="space-y-3">
+                {hotLeads.map((lead, i) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200"
+                  >
+                    {lead.email}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-slate-400">
+                No hay hot leads ahora mismo.
+              </div>
+            )}
+          </Panel>
+
           <Panel title="Respuestas">
             <div className="overflow-hidden rounded-2xl border border-white/10">
               <table className="w-full text-left text-sm">
@@ -647,10 +597,7 @@ https://empresa3.com`}
                 </thead>
                 <tbody>
                   {respuestas.map((r, i) => (
-                    <tr
-                      key={i}
-                      className="border-t border-white/10 bg-white/[0.02]"
-                    >
+                    <tr key={i} className="border-t border-white/10 bg-white/[0.02]">
                       <Td>{r.empresa}</Td>
                       <Td>
                         <StatusBadge status={r.estado} />
@@ -664,7 +611,9 @@ https://empresa3.com`}
               </table>
             </div>
           </Panel>
+        </section>
 
+        <section className="mb-8">
           <Panel title="Base de leads">
             <div className="overflow-hidden rounded-2xl border border-white/10">
               <table className="w-full text-left text-sm">
@@ -680,10 +629,7 @@ https://empresa3.com`}
                 </thead>
                 <tbody>
                   {leads.map((r, i) => (
-                    <tr
-                      key={i}
-                      className="border-t border-white/10 bg-white/[0.02]"
-                    >
+                    <tr key={i} className="border-t border-white/10 bg-white/[0.02]">
                       <Td>{r.empresa}</Td>
                       <Td className="max-w-[220px] truncate">{r.email || '—'}</Td>
                       <Td className="max-w-[220px] truncate">{r.web || '—'}</Td>
@@ -704,14 +650,9 @@ https://empresa3.com`}
   );
 }
 
-function Panel({ title, children, accent = 'default' }) {
-  const accentClasses =
-    accent === 'green'
-      ? 'border-emerald-400/20 bg-emerald-500/[0.08]'
-      : 'border-white/10 bg-white/[0.04]';
-
+function Panel({ title, children }) {
   return (
-    <div className={`rounded-[28px] border p-5 shadow-2xl shadow-black/20 backdrop-blur-sm ${accentClasses}`}>
+    <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 backdrop-blur-sm">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-lg font-medium tracking-tight text-slate-100">
           {title}
@@ -965,7 +906,7 @@ function StatusBadge({ status }) {
   const cls =
     s === 'interesado'
       ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-      : s === 'baja' || s === 'no_interesado' || s === 'web_sin_email' || s === 'error_web'
+      : s === 'baja' || s === 'no_interesado'
       ? 'border-rose-400/20 bg-rose-400/10 text-rose-200'
       : s === 'pendiente' || s === 'pendiente_web'
       ? 'border-amber-400/20 bg-amber-400/10 text-amber-200'
