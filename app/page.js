@@ -7,7 +7,36 @@ export default function DashboardProOutbound() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
 
+  const [singleEmail, setSingleEmail] = React.useState('');
+  const [bulkEmails, setBulkEmails] = React.useState('');
+  const [addingSingle, setAddingSingle] = React.useState(false);
+  const [addingBulk, setAddingBulk] = React.useState(false);
+  const [leadMessage, setLeadMessage] = React.useState('');
+  const [leadError, setLeadError] = React.useState('');
+
   const API_URL = '/api/dashboard';
+
+  // IMPORTANTE:
+  // Cambia esto por tu URL real del Web App de Apps Script
+  const LEADS_WEBAPP_URL =
+    'https://script.google.com/macros/s/AKfycbzqMVdV8NYpu4HxT9ijpboPstnx1jx6GgyxL7-GPjL_eDpMu5D6UmvHrXHEu--6OjE/exec';
+
+  const loadDashboard = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const res = await fetch(API_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const json = await res.json();
+      setData(json);
+    } catch (e) {
+      setError(String(e?.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -34,12 +63,111 @@ export default function DashboardProOutbound() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [API_URL]);
 
   async function handleLogout() {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login';
   }
+
+  function normalizeEmailsFromText(text) {
+    return [...new Set(
+      String(text || '')
+        .split(/[\n,; ]+/)
+        .map((x) => x.trim().toLowerCase())
+        .filter(Boolean)
+    )];
+  }
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+  }
+
+  async function sendEmailsToPipeline(emails) {
+    const res = await fetch(LEADS_WEBAPP_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        action: 'addLeadsFromDashboard',
+        emails,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!data?.ok) {
+      throw new Error(data?.error || 'Error añadiendo leads');
+    }
+
+    return data;
+  }
+
+  async function handleAddSingle() {
+    setLeadError('');
+    setLeadMessage('');
+
+    const email = String(singleEmail || '').trim().toLowerCase();
+
+    if (!email) {
+      setLeadError('Introduce un email.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setLeadError('El email no es válido.');
+      return;
+    }
+
+    try {
+      setAddingSingle(true);
+
+      const result = await sendEmailsToPipeline([email]);
+
+      setLeadMessage(
+        `Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
+      );
+      setSingleEmail('');
+      await loadDashboard();
+    } catch (e) {
+      setLeadError(String(e?.message || e));
+    } finally {
+      setAddingSingle(false);
+    }
+  }
+
+  async function handleAddBulk() {
+    setLeadError('');
+    setLeadMessage('');
+
+    const emails = normalizeEmailsFromText(bulkEmails);
+
+    if (!emails.length) {
+      setLeadError('Pega al menos un email.');
+      return;
+    }
+
+    try {
+      setAddingBulk(true);
+
+      const result = await sendEmailsToPipeline(emails);
+
+      setLeadMessage(
+        `Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
+      );
+      setBulkEmails('');
+      await loadDashboard();
+    } catch (e) {
+      setLeadError(String(e?.message || e));
+    } finally {
+      setAddingBulk(false);
+    }
+  }
+
+  const bulkParsed = normalizeEmailsFromText(bulkEmails);
+  const bulkValidCount = bulkParsed.filter(isValidEmail).length;
+  const bulkInvalidCount = bulkParsed.filter((e) => !isValidEmail(e)).length;
 
   const metrics = data?.metrics || {
     totalLeads: 0,
@@ -121,6 +249,92 @@ export default function DashboardProOutbound() {
             Error cargando datos: {error}
           </div>
         )}
+
+        <section className="mb-8">
+          <Panel title="Entrada rápida al pipeline">
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-3">
+                  <div className="text-base font-medium text-white">
+                    Añadir email suelto
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    Se insertará justo después del último enviado_1 y antes del
+                    primer pendiente.
+                  </div>
+                </div>
+
+                <input
+                  type="email"
+                  value={singleEmail}
+                  onChange={(e) => setSingleEmail(e.target.value)}
+                  placeholder="cliente@empresa.com"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
+
+                <button
+                  onClick={handleAddSingle}
+                  disabled={addingSingle}
+                  className="mt-4 w-full rounded-2xl bg-sky-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {addingSingle ? 'Añadiendo...' : 'Añadir al pipeline'}
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-3">
+                  <div className="text-base font-medium text-white">
+                    Añadir en bulk
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    Pega varios emails separados por salto de línea, coma,
+                    espacio o punto y coma.
+                  </div>
+                </div>
+
+                <textarea
+                  value={bulkEmails}
+                  onChange={(e) => setBulkEmails(e.target.value)}
+                  rows={8}
+                  placeholder={`cliente1@empresa.com
+cliente2@empresa.com
+cliente3@empresa.com`}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <MiniInfo label="Detectados" value={bulkParsed.length} />
+                  <MiniInfo label="Válidos" value={bulkValidCount} tone="ok" />
+                  <MiniInfo
+                    label="Inválidos"
+                    value={bulkInvalidCount}
+                    tone="bad"
+                  />
+                </div>
+
+                <button
+                  onClick={handleAddBulk}
+                  disabled={addingBulk}
+                  className="mt-4 w-full rounded-2xl bg-fuchsia-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {addingBulk ? 'Añadiendo...' : 'Añadir en bloque'}
+                </button>
+              </div>
+            </div>
+
+            {leadError && (
+              <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+                {leadError}
+              </div>
+            )}
+
+            {leadMessage && (
+              <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                {leadMessage}
+              </div>
+            )}
+          </Panel>
+        </section>
 
         <section className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
           <MetricCard label="Total leads" value={metrics.totalLeads} />
@@ -348,6 +562,20 @@ function KpiBlock({ label, value }) {
   );
 }
 
+function MiniInfo({ label, value, tone = 'neutral' }) {
+  const map = {
+    neutral: 'border-white/10 bg-white/[0.04] text-slate-200',
+    ok: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200',
+    bad: 'border-rose-400/20 bg-rose-400/10 text-rose-200',
+  };
+
+  return (
+    <div className={`rounded-full border px-3 py-1 text-xs ${map[tone] || map.neutral}`}>
+      {label}: {value}
+    </div>
+  );
+}
+
 function PieDistribution({ estados, total }) {
   const normalized = estados.map((item) => ({
     ...item,
@@ -372,13 +600,13 @@ function PieDistribution({ estados, total }) {
   const gradient = `conic-gradient(${segments.join(', ')})`;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[260px_1fr] items-center">
+    <div className="grid items-center gap-6 lg:grid-cols-[260px_1fr]">
       <div className="flex flex-col items-center justify-center">
         <div
           className="relative h-56 w-56 rounded-full border border-white/10"
           style={{ background: gradient }}
         >
-          <div className="absolute inset-[22px] rounded-full bg-slate-950 border border-white/10" />
+          <div className="absolute inset-[22px] rounded-full border border-white/10 bg-slate-950" />
         </div>
       </div>
 
