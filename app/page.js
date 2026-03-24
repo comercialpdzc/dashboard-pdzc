@@ -9,13 +9,20 @@ export default function DashboardProOutbound() {
 
   const [singleEmail, setSingleEmail] = React.useState('');
   const [bulkEmails, setBulkEmails] = React.useState('');
+  const [singleWeb, setSingleWeb] = React.useState('');
+  const [bulkWebs, setBulkWebs] = React.useState('');
+
   const [addingSingle, setAddingSingle] = React.useState(false);
   const [addingBulk, setAddingBulk] = React.useState(false);
+  const [addingSingleWeb, setAddingSingleWeb] = React.useState(false);
+  const [addingBulkWeb, setAddingBulkWeb] = React.useState(false);
+
   const [leadMessage, setLeadMessage] = React.useState('');
   const [leadError, setLeadError] = React.useState('');
 
   const API_URL = '/api/dashboard';
   const LEADS_API_URL = '/api/add-leads';
+  const WEB_LEADS_API_URL = '/api/add-web-leads';
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -77,8 +84,28 @@ export default function DashboardProOutbound() {
     ];
   }
 
+  function normalizeWebsFromText(text) {
+    return [
+      ...new Set(
+        String(text || '')
+          .split(/[\n,; ]+/)
+          .map((x) => x.trim())
+          .filter(Boolean)
+      ),
+    ];
+  }
+
   function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+  }
+
+  function isLikelyWeb(value) {
+    const v = String(value || '').trim();
+    if (!v) return false;
+    return (
+      /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(v) ||
+      /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(v)
+    );
   }
 
   async function sendEmailsToPipeline(emails) {
@@ -97,6 +124,27 @@ export default function DashboardProOutbound() {
 
     if (!data?.ok) {
       throw new Error(data?.error || 'Error añadiendo leads');
+    }
+
+    return data;
+  }
+
+  async function sendWebsToPipeline(webs) {
+    const res = await fetch(WEB_LEADS_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'addWebLeadsFromDashboard',
+        webs,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!data?.ok) {
+      throw new Error(data?.error || 'Error añadiendo webs');
     }
 
     return data;
@@ -124,7 +172,7 @@ export default function DashboardProOutbound() {
       const result = await sendEmailsToPipeline([email]);
 
       setLeadMessage(
-        `Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
+        `Emails → Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
       );
       setSingleEmail('');
       await loadDashboard();
@@ -152,7 +200,7 @@ export default function DashboardProOutbound() {
       const result = await sendEmailsToPipeline(emails);
 
       setLeadMessage(
-        `Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
+        `Emails → Añadidos: ${result.inserted} · Duplicados: ${result.duplicates} · Inválidos: ${result.invalid}`
       );
       setBulkEmails('');
       await loadDashboard();
@@ -163,9 +211,74 @@ export default function DashboardProOutbound() {
     }
   }
 
+  async function handleAddSingleWeb() {
+    setLeadError('');
+    setLeadMessage('');
+
+    const web = String(singleWeb || '').trim();
+
+    if (!web) {
+      setLeadError('Introduce una web.');
+      return;
+    }
+
+    if (!isLikelyWeb(web)) {
+      setLeadError('La web no parece válida.');
+      return;
+    }
+
+    try {
+      setAddingSingleWeb(true);
+
+      const result = await sendWebsToPipeline([web]);
+
+      setLeadMessage(
+        `Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`
+      );
+      setSingleWeb('');
+      await loadDashboard();
+    } catch (e) {
+      setLeadError(String(e?.message || e));
+    } finally {
+      setAddingSingleWeb(false);
+    }
+  }
+
+  async function handleAddBulkWeb() {
+    setLeadError('');
+    setLeadMessage('');
+
+    const webs = normalizeWebsFromText(bulkWebs);
+
+    if (!webs.length) {
+      setLeadError('Pega al menos una web.');
+      return;
+    }
+
+    try {
+      setAddingBulkWeb(true);
+
+      const result = await sendWebsToPipeline(webs);
+
+      setLeadMessage(
+        `Webs → Añadidas: ${result.inserted} · Duplicadas: ${result.duplicates}`
+      );
+      setBulkWebs('');
+      await loadDashboard();
+    } catch (e) {
+      setLeadError(String(e?.message || e));
+    } finally {
+      setAddingBulkWeb(false);
+    }
+  }
+
   const bulkParsed = normalizeEmailsFromText(bulkEmails);
   const bulkValidCount = bulkParsed.filter(isValidEmail).length;
   const bulkInvalidCount = bulkParsed.filter((e) => !isValidEmail(e)).length;
+
+  const bulkParsedWebs = normalizeWebsFromText(bulkWebs);
+  const bulkValidWebCount = bulkParsedWebs.filter(isLikelyWeb).length;
+  const bulkInvalidWebCount = bulkParsedWebs.filter((w) => !isLikelyWeb(w)).length;
 
   const metrics = data?.metrics || {
     totalLeads: 0,
@@ -257,8 +370,7 @@ export default function DashboardProOutbound() {
                     Añadir email suelto
                   </div>
                   <div className="text-sm text-slate-400">
-                    Se insertará justo después del último enviado_1 y antes del
-                    primer pendiente.
+                    Se insertará justo después del último enviado_1 y antes del primer pendiente.
                   </div>
                 </div>
 
@@ -275,18 +387,17 @@ export default function DashboardProOutbound() {
                   disabled={addingSingle}
                   className="mt-4 w-full rounded-2xl bg-sky-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {addingSingle ? 'Añadiendo...' : 'Añadir al pipeline'}
+                  {addingSingle ? 'Añadiendo...' : 'Añadir email al pipeline'}
                 </button>
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-3">
                   <div className="text-base font-medium text-white">
-                    Añadir en bulk
+                    Añadir en bulk emails
                   </div>
                   <div className="text-sm text-slate-400">
-                    Pega varios emails separados por salto de línea, coma,
-                    espacio o punto y coma.
+                    Pega varios emails separados por salto de línea, coma, espacio o punto y coma.
                   </div>
                 </div>
 
@@ -303,11 +414,7 @@ cliente3@empresa.com`}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <MiniInfo label="Detectados" value={bulkParsed.length} />
                   <MiniInfo label="Válidos" value={bulkValidCount} tone="ok" />
-                  <MiniInfo
-                    label="Inválidos"
-                    value={bulkInvalidCount}
-                    tone="bad"
-                  />
+                  <MiniInfo label="Inválidos" value={bulkInvalidCount} tone="bad" />
                 </div>
 
                 <button
@@ -315,7 +422,69 @@ cliente3@empresa.com`}
                   disabled={addingBulk}
                   className="mt-4 w-full rounded-2xl bg-fuchsia-500 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {addingBulk ? 'Añadiendo...' : 'Añadir en bloque'}
+                  {addingBulk ? 'Añadiendo...' : 'Añadir emails en bloque'}
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-3">
+                  <div className="text-base font-medium text-white">
+                    Añadir web suelta
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    Se añadirá al pipeline como pendiente_web y el sistema intentará sacar el email automáticamente.
+                  </div>
+                </div>
+
+                <input
+                  type="text"
+                  value={singleWeb}
+                  onChange={(e) => setSingleWeb(e.target.value)}
+                  placeholder="empresa.com o https://empresa.com"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
+
+                <button
+                  onClick={handleAddSingleWeb}
+                  disabled={addingSingleWeb}
+                  className="mt-4 w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {addingSingleWeb ? 'Añadiendo...' : 'Añadir web al pipeline'}
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-3">
+                  <div className="text-base font-medium text-white">
+                    Añadir en bulk webs
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    Pega varias webs separadas por salto de línea, coma, espacio o punto y coma.
+                  </div>
+                </div>
+
+                <textarea
+                  value={bulkWebs}
+                  onChange={(e) => setBulkWebs(e.target.value)}
+                  rows={8}
+                  placeholder={`empresa1.com
+empresa2.com
+https://empresa3.com`}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <MiniInfo label="Detectadas" value={bulkParsedWebs.length} />
+                  <MiniInfo label="Válidas" value={bulkValidWebCount} tone="ok" />
+                  <MiniInfo label="Inválidas" value={bulkInvalidWebCount} tone="bad" />
+                </div>
+
+                <button
+                  onClick={handleAddBulkWeb}
+                  disabled={addingBulkWeb}
+                  className="mt-4 w-full rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-medium text-slate-950 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {addingBulkWeb ? 'Añadiendo...' : 'Añadir webs en bloque'}
                 </button>
               </div>
             </div>
@@ -467,6 +636,7 @@ cliente3@empresa.com`}
                   <tr>
                     <Th>Empresa</Th>
                     <Th>Email</Th>
+                    <Th>Web</Th>
                     <Th>Estado</Th>
                     <Th>Tipo</Th>
                     <Th>Fecha envío</Th>
@@ -479,7 +649,8 @@ cliente3@empresa.com`}
                       className="border-t border-white/10 bg-white/[0.02]"
                     >
                       <Td>{r.empresa}</Td>
-                      <Td className="max-w-[220px] truncate">{r.email}</Td>
+                      <Td className="max-w-[220px] truncate">{r.email || '—'}</Td>
+                      <Td className="max-w-[220px] truncate">{r.web || '—'}</Td>
                       <Td>
                         <StatusBadge status={r.estado} />
                       </Td>
@@ -753,9 +924,9 @@ function StatusBadge({ status }) {
   const cls =
     s === 'interesado'
       ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-      : s === 'baja' || s === 'no_interesado'
+      : s === 'baja' || s === 'no_interesado' || s === 'web_sin_email' || s === 'error_web'
       ? 'border-rose-400/20 bg-rose-400/10 text-rose-200'
-      : s === 'pendiente'
+      : s === 'pendiente' || s === 'pendiente_web'
       ? 'border-amber-400/20 bg-amber-400/10 text-amber-200'
       : 'border-white/10 bg-white/5 text-slate-200';
 
